@@ -40,7 +40,7 @@ detector_qe = etc_data.e2v_detector_qe()
 ####################
 
 #observation parameters
-exp_time = 600#10 ** n.arange(0,7,.1) #600 #[seconds]
+exp_time = 10 ** n.arange(.25,10,.1) #600 #[seconds]
 print('exposure time (seconds) :', exp_time)
 print('-------------------------------')
 
@@ -51,7 +51,7 @@ filter_t, filter_lam = g_sdss_filter
 
 ####################
 #target parameters
-rescale_target_mag = 18
+rescale_target_mag = 26
 
 data = fits.getdata('calspec_standards/hd205905_stis_004.fits')
 target_flux = data['FLUX']   #[erg s^-1 cm-^2 Ang^-1]
@@ -167,24 +167,36 @@ dark_current_total = dark_current * exp_time * npix_total
 read_noise_total = read_noise**2 * npix_total
 sky_noise_total = sky_photons * npix_total
 
-
-
+total_counts = target_photons + sky_noise_total + dark_current_total + read_noise_total
+print('total photons (target + noise):', total_counts)
 #calculting it using the SNR equation
-SNR = target_photons / n.sqrt( target_photons + sky_noise_total + dark_current_total + read_noise_total)
+SNR = target_photons / n.sqrt(total_counts )
 print('SNR :', SNR)
 
+SNR_background_limit = target_photons / n.sqrt(sky_noise_total)
 
-############################################################################################################
-#making a detector image
-detector[disk_inds] = target_photons/npix_total #n.random.poisson( lam = target_photons/npix_total, size = n.shape(detector[disk_inds]))
+plt.figure('SNR')
+plt.plot(exp_time, SNR, label = 'SNR real')
+plt.plot(exp_time, SNR_background_limit, label = 'SNR background only')
+plt.legend(loc = 'best')
+plt.ylabel('SNR')
+plt.xlabel('exposure time (seconds)')
+plt.yscale('log')
+plt.xscale('log')
+plt.show()
 
-sky = n.random.poisson( lam = sky_photons, size = n.shape(detector))
-detector += sky
-detector += dark_current * exp_time
-detector += read_noise**2
+
+# ############################################################################################################
+# #making a detector image
+# detector[disk_inds] = target_photons/npix_total #n.random.poisson( lam = target_photons/npix_total, size = n.shape(detector[disk_inds]))
+
+# sky = n.random.poisson( lam = sky_photons, size = n.shape(detector))
+# detector += sky
+# detector += dark_current * exp_time
+# detector += read_noise**2
 
 
-detector_subset = detector[1950:2050,  2450: 2550]
+# detector_subset = detector[1950:2050,  2450: 2550]
 
 # plt.figure('snr test')
 # plt.plot(exp_time, SNR)
@@ -192,27 +204,27 @@ detector_subset = detector[1950:2050,  2450: 2550]
 # plt.yscale('log')
 # plt.show()
 
-plt.figure('detector')
-plt.subplot(121)
-plt.title('detector all')
-plt.imshow(detector, origin = 'lower')
+# plt.figure('detector')
+# plt.subplot(121)
+# plt.title('detector all')
+# plt.imshow(detector, origin = 'lower')
 
-plt.subplot(122)
-plt.title('detector subset')
-plt.imshow(detector_subset, origin = 'lower')
-plt.show()
+# plt.subplot(122)
+# plt.title('detector subset')
+# plt.imshow(detector_subset, origin = 'lower')
+# plt.show()
 
 
-background = n.median(detector)
-im_skysub = detector - background
+# background = n.median(detector)
+# im_skysub = detector - background
 
-positions = (n.array([x0,y0]), n.array([100,100]))
-apertures = CircularAperture(positions, r=seeing_disk_size)
-phot_table = aperture_photometry(im_skysub, apertures)
+# positions = (n.array([x0,y0]), n.array([100,100]))
+# apertures = CircularAperture(positions, r=seeing_disk_size)
+# phot_table = aperture_photometry(im_skysub, apertures)
 
-target_apt = phot_table['aperture_sum'][0]
-noise_apt = phot_table['aperture_sum'][1]
+# target_apt = phot_table['aperture_sum'][0]
+# noise_apt = phot_table['aperture_sum'][1]
 
-SNR_est = target_apt/noise_apt
-print('SNR aperture photometry :', SNR_est)
+# SNR_est = target_apt/noise_apt
+# print('SNR aperture photometry :', SNR_est)
 
